@@ -3,7 +3,7 @@ use tray_icon::{
     Icon, TrayIcon, TrayIconBuilder,
 };
 
-use crate::{APP_ICON, DENY_HIDING};
+use crate::APP_ICON;
 
 pub const SHOW_ID: &str = "tray-show";
 pub const QUIT_ID: &str = "tray-quit";
@@ -16,8 +16,8 @@ struct TrayMenuItems {
 
 impl TrayMenuItems {
     fn build() -> Self {
-        let show = MenuItem::with_id(SHOW_ID, "Show", true, None);
-        let quit = MenuItem::with_id(QUIT_ID, "Quit", true, None);
+        let show = MenuItem::with_id(SHOW_ID, "Open", true, None);
+        let quit = MenuItem::with_id(QUIT_ID, "Exit", true, None);
 
         Self { show, quit }
     }
@@ -25,7 +25,7 @@ impl TrayMenuItems {
 
 fn build_tray_menu(items: &TrayMenuItems, has_gui: bool) -> Menu {
     let menu = Menu::new();
-    if has_gui && !*DENY_HIDING {
+    if has_gui {
         menu.append_items(&[&items.show]).unwrap();
     }
     menu.append_items(&[&items.quit]).unwrap();
@@ -40,6 +40,8 @@ pub fn build_tray(has_gui: bool) -> Option<TrayIcon> {
         .with_tooltip("Legion Keyboard Control")
         .with_icon(load_tray_icon(APP_ICON))
         .with_menu(Box::new(menu))
+        // Left click opens the window; the menu is right-click only.
+        .with_menu_on_left_click(false)
         .build()
         .ok()
 }
