@@ -17,7 +17,7 @@ use eframe::{
 use egui_notify::Toasts;
 use legion_input::{EventKind, Key};
 use strum::IntoEnumIterator;
-use tray_icon::menu::MenuEvent;
+use tray_icon::{menu::MenuEvent, MouseButton, TrayIconEvent};
 
 use crate::{
     cli::OutputType,
@@ -161,12 +161,15 @@ impl App {
         let egui_ctx = cc.egui_ctx.clone();
         let gui_tx = self.gui_tx.clone();
         let has_tray = self.has_tray.clone();
+        let visible = self.visible.clone();
 
         std::thread::spawn(move || loop {
             if let Ok(event) = MenuEvent::receiver().recv() {
                 if event.id == SHOW_ID {
+                    visible.store(true, Ordering::SeqCst);
                     egui_ctx.request_repaint();
 
+                    egui_ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
                     egui_ctx.send_viewport_cmd(ViewportCommand::Visible(true));
                     egui_ctx.send_viewport_cmd(ViewportCommand::Focus);
                 } else if event.id == QUIT_ID {
@@ -175,6 +178,34 @@ impl App {
                     let _ = gui_tx.send(GuiMessage::Quit);
                     has_tray.store(false, Ordering::SeqCst);
                 }
+            }
+        });
+
+        // Left-clicking the tray icon opens the window (menu is right-click only).
+        let egui_ctx = cc.egui_ctx.clone();
+        let visible = self.visible.clone();
+        std::thread::spawn(move || loop {
+            if let Ok(event) = TrayIconEvent::receiver().recv() {
+                if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
+                    visible.store(true, Ordering::SeqCst);
+                    egui_ctx.request_repaint();
+
+                    egui_ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
+                    egui_ctx.send_viewport_cmd(ViewportCommand::Visible(true));
+                    egui_ctx.send_viewport_cmd(ViewportCommand::Focus);
+                }
+            }
+        });
+
+        // egui pauses a hidden viewport's event processing, so viewport commands
+        // sent while hidden can be dropped upstream (emilk/egui#3655). Keep a
+        // slow repaint heartbeat going while hidden so Open/Exit always land.
+        let egui_ctx = cc.egui_ctx.clone();
+        let visible = self.visible.clone();
+        std::thread::spawn(move || loop {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            if !visible.load(Ordering::SeqCst) {
+                egui_ctx.request_repaint();
             }
         });
 
@@ -253,6 +284,17 @@ impl eframe::App for App {
 
         if self.state_changed {
             self.update_state();
+
+            // Persist right away so a Task Manager kill (or crash) doesn't
+            // lose the user's preferences; on_exit still saves as a fallback.
+            let SavedItems { profiles, custom_effects, .. } = self.saved_items.clone();
+            let mut settings = Settings::new(profiles, custom_effects, self.current_profile.clone());
+            if !settings.save() {
+                self.toasts
+                    .error("Could not save settings - no writable location (exe folder and %APPDATA% both failed).")
+                    .duration(Some(std::time::Duration::from_millis(8000)))
+                    .closable(true);
+            }
         }
 
         self.handle_close_request(ctx);
@@ -408,8 +450,10 @@ impl App {
     fn handle_close_request(&mut self, ctx: &Context) {
         if ctx.input(|i| i.viewport().close_requested()) && !*DENY_HIDING {
             if self.has_tray.load(Ordering::Relaxed) {
+                // Hide to the tray instead of closing; the effect keeps running.
                 ctx.send_viewport_cmd(ViewportCommand::CancelClose);
                 ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+                self.visible.store(false, Ordering::SeqCst);
             } else {
                 // Close normally
             }
