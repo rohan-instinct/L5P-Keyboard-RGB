@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), windows_subsystem = "windows")]
 #![cfg_attr(test, windows_subsystem = "console")]
 
+mod autostart;
 mod cli;
 #[cfg(target_os = "windows")]
 mod console;
@@ -30,7 +31,7 @@ const WINDOW_SIZE: Vec2 = Vec2::new(500., 460.);
 #[cfg(target_os = "linux")]
 pub static DENY_HIDING: LazyLock<bool> = LazyLock::new(|| std::env::var("WAYLAND_DISPLAY").is_ok());
 #[cfg(not(target_os = "linux"))]
-pub static DENY_HIDING: LazyLock<bool> = LazyLock::new(|| true);
+pub static DENY_HIDING: LazyLock<bool> = LazyLock::new(|| false);
 
 fn main() {
     #[cfg(target_os = "windows")]
