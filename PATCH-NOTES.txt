@@ -1,51 +1,52 @@
-L5P-Keyboard-RGB - tray + background build (private build)
-==========================================================
-Base: 4JX/L5P-Keyboard-RGB, main @ 6e54bd6 (GPL-3.0, license and notices unchanged)
+L5P-Keyboard-RGB - tray + background TEST BUILD
+===============================================
+This is a COMPILED TEST BUILD, not a finished verified fix: it built cleanly
+on GitHub's runner, but it has NOT been run on a real Legion laptop yet.
+The tray and startup behavior especially needs your testing (see checklist).
 
-What this build does differently (all modes kept, GUI unchanged):
+Base: 4JX/L5P-Keyboard-RGB (GPL-3.0 - license and notices unchanged)
+Exact source of this build (commit 56b34f1):
+https://github.com/rohan-instinct/L5P-Keyboard-RGB/archive/refs/tags/bg-build.zip
 
-1. TRAY MODE ON WINDOWS (tray.rs, gui/mod.rs, main.rs)
-   - Closing the window (X) now hides the app to the system tray instead of
-     quitting. Your lighting keeps running in the background.
+What's different from upstream (all modes kept, GUI unchanged):
+
+1. TRAY MODE
+   - Closing the window (X) hides the app to the system tray instead of
+     quitting; the lighting keeps running in the background.
    - Left-click the tray icon (near the clock) to reopen the controls.
-   - Right-click the tray icon: exactly two options - "Open" and "Exit".
-     Exit fully quits the app and stops the effect.
-   - Includes a workaround for the upstream egui bug that made reopening the
-     window unreliable on Windows (emilk/egui#3655, tracked upstream as
-     4JX/L5P-Keyboard-RGB#181): while hidden, the app keeps a slow 500ms
-     repaint heartbeat so Open/Exit always respond.
+   - Right-click the tray icon: exactly "Open" and "Exit".
+   - Exit fully quits the app (process terminates). Note: if your mode is a
+     hardware effect (Static / Breath / Smooth / Waves), the keyboard may
+     KEEP its last colors after Exit - that is firmware behavior by design,
+     not a bug.
 
-2. "START ON BOOT UP" TOGGLE (autostart.rs, gui/menu_bar.rs)
-   - New Settings menu in the app with a "Start on boot up" checkbox.
+2. "START ON BOOT UP" TOGGLE
+   - Settings menu in the app > "Start on boot up" checkbox.
    - On: the app starts hidden in the tray when you sign in to Windows,
      with your saved mode and settings - no window pops up.
-   - Off: the startup entry is removed.
-   - (Per-user registry entry under HKCU\...\Run; no admin needed.)
+   - Off: the startup entry is removed (per-user setting, no admin needed).
 
-3. SETTINGS THAT ACTUALLY STICK (persist.rs, gui/mod.rs)
-   - Settings are saved immediately when you change anything, not only on a
-     clean exit - so a Task Manager kill can't lose them anymore.
-   - settings.json now lives beside the exe (or %APPDATA%\L5P-Keyboard-RGB
-     if that folder isn't writable), instead of whatever folder the app
-     happened to launch from - this is why preferences used to "reset".
-   - Your existing settings.json is still picked up on first run.
-   - If saving fails everywhere, the app shows an error toast instead of
-     failing silently.
+3. SETTINGS THAT STICK
+   - Settings save immediately when you change anything (no clean-exit
+     needed), and now live beside the exe (or %APPDATA%\L5P-Keyboard-RGB if
+     that folder is not writable) instead of whatever folder the app
+     happened to launch from - that is why preferences used to "reset".
+   - Your existing settings.json is picked up automatically on first run.
 
-4. --background CLI FLAG (cli.rs)
-   - Runs the currently saved profile windowless, no tray icon.
-   - Optional power-user extra; the tray mode above is the normal way.
-   - Software-rendered CLI effects (AmbientLight etc.) now keep running
-     instead of exiting immediately; hardware effects unchanged.
+4. --background CLI flag (optional, for advanced use)
+   - Runs the saved profile windowless with no tray icon. The tray mode
+     above is the normal way; you do not need this.
 
-How to use:
-- Close this README and just open legion-kb-rgb.exe. Pick your mode, close
-  the window - it stays in the tray. Left-click the tray icon to change
-  modes. Right-click > Exit to quit completely.
-- Optional: Settings > "Start on boot up" so it comes back on its own.
-- Keep your original exe; this build does not modify it. Note that both
-  share the same single-instance rule: only one runs at a time.
+PLEASE TEST (on your Legion) and report what happens:
+  [ ] Open the app, pick a mode, close the window with X -> tray icon
+      appears AND lighting keeps running
+  [ ] Left-click tray icon -> window reopens with your mode still selected
+  [ ] Right-click tray icon -> menu shows only "Open" and "Exit"
+  [ ] Exit -> app process fully quits (gone from Task Manager)
+  [ ] Change a setting, kill the app in Task Manager, reopen -> setting kept
+  [ ] Settings > "Start on boot up" on, then reboot -> app starts hidden in
+      tray with your saved mode
 
 First run may show a SmartScreen prompt because the build is unsigned.
-The tray workaround and settings changes are not yet tested on a real
-Legion machine - please report anything odd.
+Keep your original exe; this build does not modify it, and only one copy
+can run at a time (by design, so two copies don't fight over the keyboard).
