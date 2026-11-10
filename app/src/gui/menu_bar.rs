@@ -20,6 +20,7 @@ pub struct MenuBarState {
     load_profile_dialog: FileDialog,
     load_effect_dialog: FileDialog,
     save_profile_dialog: FileDialog,
+    start_on_boot: bool,
 }
 
 impl MenuBarState {
@@ -29,6 +30,7 @@ impl MenuBarState {
             load_profile_dialog: FileDialog::open_file(None).default_size(Vec2::splat(300.0)),
             load_effect_dialog: FileDialog::open_file(None).default_size(Vec2::splat(300.0)),
             save_profile_dialog: FileDialog::save_file(None).default_size(Vec2::splat(300.0)),
+            start_on_boot: crate::autostart::is_enabled(),
         }
     }
 
@@ -119,6 +121,15 @@ impl MenuBarState {
             ui.menu_button("Effect", |ui| {
                 if ui.button("Open").clicked() {
                     self.load_effect_dialog.open();
+                }
+            });
+
+            ui.menu_button("Settings", |ui| {
+                if ui.checkbox(&mut self.start_on_boot, "Start on boot up").changed() {
+                    if crate::autostart::set_enabled(self.start_on_boot).is_err() {
+                        self.start_on_boot = crate::autostart::is_enabled();
+                        toasts.error("Could not update the startup setting.").duration(Some(Duration::from_millis(5000))).closable(true);
+                    }
                 }
             });
 
