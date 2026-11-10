@@ -1,0 +1,51 @@
+L5P-Keyboard-RGB - tray + background build (private build)
+==========================================================
+Base: 4JX/L5P-Keyboard-RGB, main @ 6e54bd6 (GPL-3.0, license and notices unchanged)
+
+What this build does differently (all modes kept, GUI unchanged):
+
+1. TRAY MODE ON WINDOWS (tray.rs, gui/mod.rs, main.rs)
+   - Closing the window (X) now hides the app to the system tray instead of
+     quitting. Your lighting keeps running in the background.
+   - Left-click the tray icon (near the clock) to reopen the controls.
+   - Right-click the tray icon: exactly two options - "Open" and "Exit".
+     Exit fully quits the app and stops the effect.
+   - Includes a workaround for the upstream egui bug that made reopening the
+     window unreliable on Windows (emilk/egui#3655, tracked upstream as
+     4JX/L5P-Keyboard-RGB#181): while hidden, the app keeps a slow 500ms
+     repaint heartbeat so Open/Exit always respond.
+
+2. "START ON BOOT UP" TOGGLE (autostart.rs, gui/menu_bar.rs)
+   - New Settings menu in the app with a "Start on boot up" checkbox.
+   - On: the app starts hidden in the tray when you sign in to Windows,
+     with your saved mode and settings - no window pops up.
+   - Off: the startup entry is removed.
+   - (Per-user registry entry under HKCU\...\Run; no admin needed.)
+
+3. SETTINGS THAT ACTUALLY STICK (persist.rs, gui/mod.rs)
+   - Settings are saved immediately when you change anything, not only on a
+     clean exit - so a Task Manager kill can't lose them anymore.
+   - settings.json now lives beside the exe (or %APPDATA%\L5P-Keyboard-RGB
+     if that folder isn't writable), instead of whatever folder the app
+     happened to launch from - this is why preferences used to "reset".
+   - Your existing settings.json is still picked up on first run.
+   - If saving fails everywhere, the app shows an error toast instead of
+     failing silently.
+
+4. --background CLI FLAG (cli.rs)
+   - Runs the currently saved profile windowless, no tray icon.
+   - Optional power-user extra; the tray mode above is the normal way.
+   - Software-rendered CLI effects (AmbientLight etc.) now keep running
+     instead of exiting immediately; hardware effects unchanged.
+
+How to use:
+- Close this README and just open legion-kb-rgb.exe. Pick your mode, close
+  the window - it stays in the tray. Left-click the tray icon to change
+  modes. Right-click > Exit to quit completely.
+- Optional: Settings > "Start on boot up" so it comes back on its own.
+- Keep your original exe; this build does not modify it. Note that both
+  share the same single-instance rule: only one runs at a time.
+
+First run may show a SmartScreen prompt because the build is unsigned.
+The tray workaround and settings changes are not yet tested on a real
+Legion machine - please report anything odd.
