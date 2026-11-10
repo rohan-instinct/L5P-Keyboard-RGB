@@ -44,6 +44,10 @@ struct Cli {
     /// Do not show the window when launching (use along the --gui flag)
     #[arg(short = 'w', long, default_value_t = false)]
     hide_window: bool,
+
+    /// Run the profile selected in the GUI settings (settings.json) in the background without opening a window
+    #[arg(long, default_value_t = false)]
+    background: bool,
 }
 
 #[derive(Subcommand)]
@@ -167,6 +171,15 @@ fn handle_cli_output(output_type: OutputType) -> Result<GuiCommand, CliError> {
 
     let mut effect_manager = manager_result.change_context(CliError)?;
 
+    // Software-rendered effects (e.g. AmbientLight) stop the moment the process
+    // exits, so keep running until the process is ended externally (Task Manager).
+    // Hardware effects keep the one-shot behavior.
+    let keep_running = match &output_type {
+        OutputType::Profile(profile) => !profile.effect.is_built_in(),
+        OutputType::Custom(_) => true,
+        _ => false,
+    };
+
     let command_result = match output_type {
         OutputType::Profile(profile) => {
             effect_manager.set_profile(profile);
@@ -180,12 +193,25 @@ fn handle_cli_output(output_type: OutputType) -> Result<GuiCommand, CliError> {
         OutputType::NoArgs => unreachable!("No arguments were provided but the app is in CLI mode"),
     };
 
+    if keep_running {
+        println!("Running in the background. End this process from Task Manager to stop the effect.");
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(3600));
+        }
+    }
+
     effect_manager.shutdown();
     command_result
 }
 
 fn parse_cli() -> Result<CliOutput, CliError> {
     let cli = Cli::parse();
+
+    // Run the profile selected in the GUI settings without opening a window.
+    if cli.background {
+        let profile = crate::persist::Settings::load().current_profile;
+        return Ok(CliOutput::Cli(OutputType::Profile(profile)));
+    }
 
     if let Some(subcommand) = cli.command {
         match subcommand {
