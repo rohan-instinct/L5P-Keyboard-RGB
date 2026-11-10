@@ -88,3 +88,6 @@ x86_64-pc-windows-msvc = { dependencies = [
     "libyuv:x64-windows-static",
     "aom:x64-windows-static",
 ] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
